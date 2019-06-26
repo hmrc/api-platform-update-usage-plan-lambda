@@ -7,12 +7,12 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent.SQSMessage
 import com.amazonaws.services.lambda.runtime.{Context, LambdaLogger}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{times, verify, when}
 import org.scalatest._
 import org.scalatest.mockito.MockitoSugar
 import software.amazon.awssdk.services.apigateway.ApiGatewayClient
 import software.amazon.awssdk.services.apigateway.model.Op.ADD
-import software.amazon.awssdk.services.apigateway.model.{Op, UnauthorizedException, UpdateUsagePlanRequest, UpdateUsagePlanResponse}
+import software.amazon.awssdk.services.apigateway.model._
 import uk.gov.hmrc.aws_gateway_proxied_request_lambda.JsonMapper
 
 import scala.collection.JavaConversions._
@@ -47,6 +47,22 @@ class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with Mockito
       val capturedRequest: UpdateUsagePlanRequest = updateUsagePlanRequestCaptor.getValue
       capturedRequest.usagePlanId shouldBe usagePlanId
       exactly(1, capturedRequest.patchOperations) should have ('op (Op.fromValue(patchOperation.op)), 'path (patchOperation.path), 'value (patchOperation.value))
+    }
+
+    "retry TooManyRequestsException" in new Setup {
+      when(mockAPIGatewayClient.updateUsagePlan(any[UpdateUsagePlanRequest]))
+        .thenThrow(TooManyRequestsException.builder().retryAfterSeconds("1").message("something went wrong").build())
+        .thenReturn(UpdateUsagePlanResponse.builder().build())
+
+      updateUsagePlanHandler.handleInput(sqsEvent, mockContext)
+
+      verify(mockAPIGatewayClient, times(2)).updateUsagePlan(any[UpdateUsagePlanRequest])
+    }
+
+    "not fail when ConflictException is thrown by AWS SDK when updating the usage plan" in new Setup {
+      when(mockAPIGatewayClient.updateUsagePlan(any[UpdateUsagePlanRequest])).thenThrow(ConflictException.builder().message("something went wrong").build())
+
+      updateUsagePlanHandler.handleInput(sqsEvent, mockContext)
     }
 
     "propagate UnauthorizedException thrown by AWS SDK when updating the usage plan" in new Setup {
