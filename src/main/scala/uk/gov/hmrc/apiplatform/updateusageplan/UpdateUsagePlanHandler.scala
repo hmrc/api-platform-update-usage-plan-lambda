@@ -38,16 +38,15 @@ class UpdateUsagePlanHandler(apiGatewayClient: ApiGatewayClient) extends SqsHand
         sleep(e.retryAfterSeconds.toInt * 1000)
         updateUsagePlan(usagePlanUpdateMsg, patchOperations)
     } get
-
-    logger.log(s"Updated usage plan ${usagePlanUpdateMsg.usagePlanId}")
   }
 
-  def updateUsagePlan(usagePlanUpdateMsg: UsagePlanUpdateMsg, patchOperations: Seq[PatchOperation]): Unit = {
+  def updateUsagePlan(usagePlanUpdateMsg: UsagePlanUpdateMsg, patchOperations: Seq[PatchOperation])(implicit logger: LambdaLogger): Unit = {
     apiGatewayClient.updateUsagePlan(
       UpdateUsagePlanRequest.builder()
         .usagePlanId(usagePlanUpdateMsg.usagePlanId)
         .patchOperations(patchOperations.asJava)
         .build())
+    logger.log(s"Updated usage plan ${usagePlanUpdateMsg.usagePlanId}")
   }
 }
 
