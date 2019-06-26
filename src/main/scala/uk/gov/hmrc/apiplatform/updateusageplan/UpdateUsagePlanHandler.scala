@@ -13,10 +13,10 @@ import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.Try
 
-class UpdateUsagePlanHandler(apiGatewayClient: ApiGatewayClient) extends SqsHandler {
+class UpdateUsagePlanHandler(apiGatewayClient: ApiGatewayClient, retryIntervalInSeconds: Int) extends SqsHandler {
 
   def this() {
-    this(awsApiGatewayClient)
+    this(awsApiGatewayClient, 20)
   }
 
   override def handleInput(input: SQSEvent, context: Context): Unit = {
@@ -33,9 +33,9 @@ class UpdateUsagePlanHandler(apiGatewayClient: ApiGatewayClient) extends SqsHand
     } recover {
       case e: ConflictException =>
         logger.log(e.getMessage)
-      case e: TooManyRequestsException =>
-        logger.log(s"Too many requests. Retrying in ${e.retryAfterSeconds} seconds")
-        sleep(e.retryAfterSeconds.toInt * 1000)
+      case _: TooManyRequestsException =>
+        logger.log(s"Too many requests. Retrying in $retryIntervalInSeconds seconds")
+        sleep(retryIntervalInSeconds * 1000)
         updateUsagePlan(usagePlanUpdateMsg, patchOperations)
     } get
   }

@@ -34,7 +34,7 @@ class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with Mockito
     val mockContext: Context = mock[Context]
     when(mockContext.getLogger).thenReturn(mock[LambdaLogger])
 
-    val updateUsagePlanHandler = new UpdateUsagePlanHandler(mockAPIGatewayClient)
+    val updateUsagePlanHandler = new UpdateUsagePlanHandler(mockAPIGatewayClient, 1)
   }
 
   "Update usage plan handler" should {
