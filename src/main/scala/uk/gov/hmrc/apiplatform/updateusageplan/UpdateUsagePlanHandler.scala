@@ -7,15 +7,15 @@ import com.amazonaws.services.lambda.runtime.{Context, LambdaLogger}
 import software.amazon.awssdk.services.apigateway.ApiGatewayClient
 import software.amazon.awssdk.services.apigateway.model._
 import uk.gov.hmrc.api_platform_manage_api.AwsApiGatewayClient.awsApiGatewayClient
-import uk.gov.hmrc.aws_gateway_proxied_request_lambda.SqsHandler
+import uk.gov.hmrc.api_platform_manage_api.utils.SqsHandler
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.Try
 
 class UpdateUsagePlanHandler(apiGatewayClient: ApiGatewayClient, retryIntervalInSeconds: Int) extends SqsHandler {
 
-  def this() {
+  def this() = {
     this(awsApiGatewayClient, 20)
   }
 
