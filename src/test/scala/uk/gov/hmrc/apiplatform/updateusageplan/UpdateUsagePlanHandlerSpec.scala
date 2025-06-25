@@ -8,16 +8,17 @@ import com.amazonaws.services.lambda.runtime.{Context, LambdaLogger}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
-import org.scalatest._
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.awssdk.services.apigateway.ApiGatewayClient
 import software.amazon.awssdk.services.apigateway.model.Op.ADD
 import software.amazon.awssdk.services.apigateway.model._
-import uk.gov.hmrc.aws_gateway_proxied_request_lambda.JsonMapper
+import uk.gov.hmrc.api_platform_manage_api.utils.JsonMapper
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 
-class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with MockitoSugar with JsonMapper {
+class UpdateUsagePlanHandlerSpec extends AnyWordSpec with Matchers with MockitoSugar with JsonMapper {
 
   trait Setup {
     val apiId: String = UUID.randomUUID().toString
@@ -28,7 +29,7 @@ class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with Mockito
     val message = new SQSMessage()
     message.setBody(requestBody)
     val sqsEvent = new SQSEvent()
-    sqsEvent.setRecords(List(message))
+    sqsEvent.setRecords(List(message).asJava)
 
     val mockAPIGatewayClient: ApiGatewayClient = mock[ApiGatewayClient]
     val mockContext: Context = mock[Context]
@@ -39,14 +40,15 @@ class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with Mockito
 
   "Update usage plan handler" should {
     "update the usage plan" in new Setup {
-      val updateUsagePlanRequestCaptor: ArgumentCaptor[UpdateUsagePlanRequest] = ArgumentCaptor.forClass(classOf[UpdateUsagePlanRequest])
-      when(mockAPIGatewayClient.updateUsagePlan(updateUsagePlanRequestCaptor.capture())).thenReturn(UpdateUsagePlanResponse.builder().build())
+      when(mockAPIGatewayClient.updateUsagePlan(any[UpdateUsagePlanRequest])).thenReturn(UpdateUsagePlanResponse.builder().build())
 
       updateUsagePlanHandler.handleInput(sqsEvent, mockContext)
 
+      val updateUsagePlanRequestCaptor = ArgumentCaptor.forClass(classOf[UpdateUsagePlanRequest])
+      verify(mockAPIGatewayClient).updateUsagePlan(updateUsagePlanRequestCaptor.capture)
       val capturedRequest: UpdateUsagePlanRequest = updateUsagePlanRequestCaptor.getValue
       capturedRequest.usagePlanId shouldBe usagePlanId
-      exactly(1, capturedRequest.patchOperations) should have ('op (Op.fromValue(patchOperation.op)), 'path (patchOperation.path), 'value (patchOperation.value))
+      exactly(1, capturedRequest.patchOperations) should have (Symbol("op") (Op.fromValue(patchOperation.op)), Symbol("path") (patchOperation.path), Symbol("value") (patchOperation.value))
     }
 
     "retry TooManyRequestsException" in new Setup {
@@ -74,14 +76,14 @@ class UpdateUsagePlanHandlerSpec extends WordSpecLike with Matchers with Mockito
       }
 
     "throw exception if the event has no messages" in new Setup {
-      sqsEvent.setRecords(List())
+      sqsEvent.setRecords(List().asJava)
 
       val exception: IllegalArgumentException = intercept[IllegalArgumentException](updateUsagePlanHandler.handleInput(sqsEvent, mockContext))
       exception.getMessage shouldEqual "Invalid number of records: 0"
     }
 
     "throw exception if the event has multiple messages" in new Setup {
-      sqsEvent.setRecords(List(message, message))
+      sqsEvent.setRecords(List(message, message).asJava)
 
       val exception: IllegalArgumentException = intercept[IllegalArgumentException](updateUsagePlanHandler.handleInput(sqsEvent, mockContext))
       exception.getMessage shouldEqual "Invalid number of records: 2"
