@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-// Not using the JOB_BASE_NAME env variable as the pr builder name would be incorrect for example PR-30
+// Not using the JOB_BASE_NAME env variable as the pr builder name would be incorrect
 String full_job_name = "${env.JOB_NAME?.split('/')[1]}"
 
 // Assume that the zip artefact has the same name as the Jenkins job
